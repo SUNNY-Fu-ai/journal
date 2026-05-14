@@ -1,3 +1,10 @@
 <%- breadcrumb :journal_entries, journal %>
+<%- content_for :head do %>
+  <%= auto_discovery_link_tag(
+    :rss,
+    polymorphic_path(journal.location(child: :entries), format: :rss),
+    title: "#{journal.room.name} Journal"
+  ) %>
+<%- end %>
 
 <%= render journal %>

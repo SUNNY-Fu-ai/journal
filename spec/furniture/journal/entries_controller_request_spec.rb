@@ -1,5 +1,6 @@
 require "rails_helper"
 require "cgi"
+require "rss"
 
 RSpec.describe Journal::EntriesController, type: :request do
   let(:journal) { create(:journal) }
@@ -7,7 +8,7 @@ RSpec.describe Journal::EntriesController, type: :request do
   let(:room) { journal.room }
   let(:member) { create(:person, spaces: [space]) }
 
-  before { sign_in(space, member) }
+  before { sign_in(space, member) if member.present? }
 
   describe "#index" do
     subject(:perform_request) do
@@ -27,6 +28,40 @@ RSpec.describe Journal::EntriesController, type: :request do
 
       it { is_expected.to include(CGI.escapeHTML(published_entry.headline)) }
       it { is_expected.to include(CGI.escapeHTML(unpublished_entry.headline)) }
+      it { is_expected.to include("application/rss+xml") }
+      it { is_expected.to include(polymorphic_path(journal.location(child: :entries), format: :rss)) }
+    end
+
+    context "when requesting RSS" do
+      subject(:feed) { RSS::Parser.parse(response.body, false) }
+
+      let(:member) { nil }
+      let!(:unpublished_entry) do
+        create(:journal_entry, journal: journal, headline: "Draft entry", published_at: nil)
+      end
+
+      let!(:published_entries) do
+        11.times.map do |index|
+          create(:journal_entry,
+            journal: journal,
+            headline: "Published entry #{index}",
+            body: "Body #{index}",
+            summary: "Summary #{index}",
+            published_at: (index + 1).hours.ago)
+        end
+      end
+
+      before do
+        get polymorphic_path(journal.location(child: :entries)), headers: {"ACCEPT" => "application/rss+xml"}
+      end
+
+      it "responds with the latest 10 visible journal entries" do
+        expect(test_response).to be_media_type(:rss)
+        expect(feed.channel.title).to eq("#{room.name} Journal")
+        expect(feed.items.map(&:title)).to eq(published_entries.first(10).map(&:headline))
+        expect(feed.items.map(&:description)).to eq(published_entries.first(10).map(&:summary))
+        expect(feed.items.map(&:title)).not_to include(unpublished_entry.headline)
+      end
     end
   end
 

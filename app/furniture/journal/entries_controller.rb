@@ -41,6 +41,12 @@ class Journal::EntriesController < FurnitureController
   end
 
   def index
+    respond_to do |format|
+      format.html
+      format.rss do
+        render body: rss_feed.to_xml, content_type: Mime[:rss]
+      end
+    end
   end
 
   helper_method def page_title
@@ -53,5 +59,20 @@ class Journal::EntriesController < FurnitureController
 
   helper_method def journal
     Journal::Journal.find_by(id: params[:journal_id])
+  end
+
+  private
+
+  def rss_feed
+    Journal::RssFeed.new(
+      journal: journal,
+      entries: rss_entries,
+      feed_url: polymorphic_url(journal.location(child: :entries), format: :rss),
+      entry_url: ->(entry) { polymorphic_url(entry.location) }
+    )
+  end
+
+  def rss_entries
+    policy_scope(journal.entries.recent).limit(10)
   end
 end
