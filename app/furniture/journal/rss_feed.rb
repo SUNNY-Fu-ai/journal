@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rss/maker"
+require "time"
 
 class Journal
   class RssFeed
@@ -22,7 +23,7 @@ class Journal
             item.title = entry.headline
             item.link = entry_url.call(entry)
             item.description = entry_description(entry)
-            item.pubDate = entry.published_at || entry.updated_at
+            item.pubDate = rss_time(entry.published_at || entry.updated_at)
             item.guid.content = item.link
             item.guid.isPermaLink = true
           end
@@ -44,6 +45,10 @@ class Journal
 
     def entry_description(entry)
       entry.summary.to_s.empty? ? entry.body : entry.summary
+    end
+
+    def rss_time(value)
+      value&.to_time
     end
   end
 end

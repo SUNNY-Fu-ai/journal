@@ -38,6 +38,8 @@ gem "rswag-ui"
 #
 # Allows us to render .markdown.erb files
 gem "redcarpet", "~> 3.6"
+# RSS feed generation
+gem "rss", "~> 0.3"
 # Breadcrumbs!
 gem "gretel", "~> 5.0"
 # Better UI components
